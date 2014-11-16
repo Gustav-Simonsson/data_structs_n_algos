@@ -59,10 +59,10 @@ func DeleteMin(bh []int64) (int64, []int64) {
 	bh[parentIndex] = bh[lastIndex]
 	bh = bh[0 : lastIndex] // re-slice, reducing length by one
 	left := 1
-	right := 2
 	for left < lastIndex {
+		right := left + 1
 		smallestChildIndex := left
-		if right < lastIndex  {
+		if (right) < lastIndex  {
 			if (bh[right] < bh[left]) {
 				smallestChildIndex = right
 			}
@@ -74,7 +74,6 @@ func DeleteMin(bh []int64) (int64, []int64) {
 			bh[parentIndex] = childValue
 			parentIndex = smallestChildIndex
 			left = (parentIndex * 2) + 1
-			right = (parentIndex * 2) + 2
 		} else {
 			break
 		}
@@ -117,8 +116,9 @@ func Test3() {
 	// var oldMin int64 = 0
 	bhLen := len(bh)
 	for i := 0; i < bhLen; i++ {
-		_, _ = DeleteMin(bh)
+		_, bh = DeleteMin(bh)
 	}
+	// fmt.Println("bh:", bh)
 	elapsed := time.Since(startTime)
 	fmt.Println("Test 3 OK:", elapsed.Nanoseconds(),"ns")
 }
