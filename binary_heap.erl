@@ -9,7 +9,7 @@
 %%%----------------------------------------------------------------------------
 -module(binary_heap).
 
--define(HEAP_CAPACITY, 1024 * 1024).
+-define(HEAP_CAPACITY, 1024 * 32).
 
 -compile(export_all).
 
@@ -30,19 +30,51 @@ find_min(BH) ->
 from_list(List) ->
     A = array:new(?HEAP_CAPACITY),
     lists:foldl(fun(E,Acc) ->
-                        %% io:format("HURR: ~p", [Acc]),
                         insert(Acc, E) end, A, List).
 
 insert(BH, NewValue) ->
     I = array:sparse_size(BH),
     BH2 = array:set(I, NewValue, BH),
     %% "percolation up" - swap parent and child until
-	%% parent is smaller than or equal to child
+    %% parent is smaller than or equal to child
     percolate_up(BH2, I).
+
+delete(BH) ->
+    I = array:sparse_size(BH) - 1,
+    J = 0,
+    OldMin = array:get(J, BH),
+    BH2 = array:set(J, array:get(I, BH), BH),
+    {OldMin, percolate_down(BH2, 1)}.
 
 %%%============================================================================
 %%% Internal functions
 %%%============================================================================
+percolate_down(BH, Left) ->
+    Right = Left + 1,
+    LastIndex = array:sparse_size(BH) - 1,
+    case Left < LastIndex of
+        false ->
+            BH;
+        true ->
+            SmallestChild =
+                case (Right < LastIndex) and
+                    (array:get(Right, BH) < array:get(Left, BH)) of
+                    true  -> Right;
+                    false -> Left
+                end,
+            ChildValue = array:get(SmallestChild, BH),
+            ParentIndex = (SmallestChild - 1) div 2,
+            ParentValue = array:get(ParentIndex, BH),
+            case ChildValue < ParentValue of
+                false ->
+                    BH;
+                true ->
+                    BH2 = array:set(SmallestChild, ParentValue, BH),
+                    BH3 = array:set(ParentIndex, ChildValue, BH2),
+                    percolate_down(BH3, (SmallestChild * 2) + 1)
+            end
+    end.
+
 %% Assumes a new element was just added at the end of array
 percolate_up(BH, 0) -> BH;
 percolate_up(BH, I) ->
@@ -56,7 +88,7 @@ percolate_up(BH, I) ->
         false ->
             BH
     end.
-    
+
 %%%============================================================================
 %%% TESTS
 %%%============================================================================
@@ -75,6 +107,18 @@ test2() ->
     ok.
 
 test3() ->
+    io:format("Test 3 generating random test list...~n", []),
+    TestList =
+        [random:uniform(?HEAP_CAPACITY) || _ <- lists:seq(1, ?HEAP_CAPACITY)],
+    io:format("Test 3 Calling from_list/1 and then delete/1 ~n", []),
+    {Time, _Value} =
+        timer:tc(
+          fun() ->
+                  BinHeap = from_list(TestList),
+                  lists:foldl(fun(_E, BH) -> {_, NBH} = delete(BH), NBH end,
+                              BinHeap, TestList)
+          end),
+    io:format("Test 3 OK: ~p microseconds~n", [Time]),
     ok.
 
 test4() ->

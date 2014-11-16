@@ -61,18 +61,18 @@ func DeleteMin(bh []int64) (int64, []int64) {
 	left := 1
 	right := 2
 	for left < lastIndex {
-		smallestChild := left
+		smallestChildIndex := left
 		if right < lastIndex  {
 			if (bh[right] < bh[left]) {
-				smallestChild = right
+				smallestChildIndex = right
 			}
 		}
-		childValue := bh[smallestChild]
+		childValue := bh[smallestChildIndex]
 		parentValue := bh[parentIndex]
 		if childValue < parentValue {
-			bh[smallestChild] = parentValue
+			bh[smallestChildIndex] = parentValue
 			bh[parentIndex] = childValue
-			parentIndex = smallestChild
+			parentIndex = smallestChildIndex
 			left = (parentIndex * 2) + 1
 			right = (parentIndex * 2) + 2
 		} else {
