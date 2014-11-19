@@ -29,25 +29,69 @@ insert(nil, PP, NewV) ->
     {rotation_required(NP, PP), %% inform upper level whether to rotate
      NewNode};
 
-insert({V, P, Left, Right}, PP, NewV) when NewV =< V ->
-    case insert(Left, P, NewV) of
-        {no_rotate, NewLeft} ->
+insert({V, P, L, R}, PP, NewV) when NewV =< V ->
+    case insert(L, P, NewV) of
+        {no_rotate, NewL} ->
             {rotation_required(P, PP),
-             {V, P, NewLeft, Right}};
+             {V, P, NewL, R}};
         {rotate, {LV, LP, LL, LR}} ->
             {rotation_required(P, PP),
-             {LV, LP, LL, {V, P, LR, Right}}} %% right rotation
+             {LV, LP, LL, {V, P, LR, R}}} %% right rotation
     end;
-insert({V, P, Left, Right}, PP, NewV) when NewV > V ->
-    case insert(Right, P, NewV) of
-        {no_rotate, NewRight} ->
-            {rotation_required(P, PP), {V, P, Left, NewRight}};
+insert({V, P, L, R}, PP, NewV) when NewV > V ->
+    case insert(R, P, NewV) of
+        {no_rotate, NewR} ->
+            {rotation_required(P, PP), {V, P, L, NewR}};
         {rotate, {RV, RP, RL, RR}} ->
             {rotation_required(P, PP),
-             {RV, RP, {V, P, Left, RL}, RR}} %% left rotation
+             {RV, RP, {V, P, L, RL}, RR}} %% left rotation
     end.
 
-rotation_required(NP, nil)               -> no_rotate; %% root has no parent
+delete({DeleteV, _, nil, nil}, DeleteV) -> nil;
+delete({DeleteV, _, L, nil}, DeleteV)   -> L;
+delete({DeleteV, _, nil, R}, DeleteV)   -> R;
+delete(nil, _)                          -> nil;
+delete(Node = {_, _, nil, nil}, _)      -> Node;
+delete({V, P, L, nil}, DeleteV) -> {V, P, delete(L, DeleteV), nil};
+delete({V, P, nil, R}, DeleteV) -> {V, P, nil, delete(R, DeleteV)};
+
+%% Swap the child to delete with it's immediate successor in sorted order
+delete({V, P, DeleteNode = {DeleteV, _, _, _}, R}, DeleteV) ->
+    {DeleteOrSwap, NewL} = delete_or_swap(DeleteNode),
+    case DeleteOrSwap of
+        delete -> {V, P, NewL, R};
+        swap   -> delete({V, P, NewL, R}, DeleteV)
+    end;
+%% TODO: can we abstract common pattern here for left/right child?
+delete({V, P, L, DeleteNode = {DeleteV, _, _, _}}, DeleteV) ->
+    {DeleteOrSwap, NewR} = delete_or_swap(DeleteNode),
+    case DeleteOrSwap of
+        delete -> {V, P, L, NewR};
+        swap   -> delete({V, P, L, NewR}, DeleteV)
+    end;
+
+delete({V, P, L, R}, DeleteV) ->
+    case DeleteV =< V of
+        true ->
+            {V, P, delete(L, DeleteV), R};
+        false ->
+            {V, P, L, delete(R, DeleteV)}
+    end.
+
+delete_or_swap({_, _, nil, nil})        -> {delete, nil};
+delete_or_swap({_, _, GrandChild, nil}) -> {delete, GrandChild};
+delete_or_swap({_, _, nil, GrandChild}) -> {delete, GrandChild};
+delete_or_swap({DeleteV, DeleteP,
+                L  = {LV, LP, LL, LR},
+                R = {RV, RP, RL, RR}}) ->
+    NewChild =
+        case LV >= RV of
+            true  -> {LV, LP, {DeleteV, DeleteP, LL, LR}, R};
+            false -> {RV, RP, L, {DeleteV, DeleteP, RL, RR}}
+        end,
+    {swap, NewChild}.
+
+rotation_required(_, nil)                -> no_rotate; %% root has no parent
 rotation_required(NP, PP)  when NP >= PP -> no_rotate;
 rotation_required(_,_)                   -> rotate.
 
