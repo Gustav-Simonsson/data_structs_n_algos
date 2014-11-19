@@ -1,3 +1,7 @@
+%% Run with:
+%% erlc treap.erl && erl
+%% treap:test1().
+
 -module(treap).
 -compile(export_all).
 
