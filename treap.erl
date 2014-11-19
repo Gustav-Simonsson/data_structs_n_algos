@@ -8,47 +8,56 @@ new() ->
     {A,B,C} = now(),
     random:seed(A,B,C),
     %% {Value, Priority, Left, Right}
-    {nil, nil, nil, nil}.
+    nil.
 
-insert(Treap, Value) ->
-    insert(Treap, Value, Treap).
+insert(Treap, V) ->
+    RootP = case Treap of
+                nil -> nil;
+                {_, PP, _, _} -> PP
+            end,
+    {_, NewTreap} = insert(Treap, RootP, V),
+    NewTreap.
 
-insert({nil, _, _, _}, Value, _Parent) ->
-    {Value, new_priority(), nil, nil};
+%% http://upload.wikimedia.org/wikipedia/commons/1/15/Tree_Rotations.gif
+%% short naming: (P)arent (P)riority, (R)ight (V)alue etc.
+insert(nil, PP, NewV) ->
+    {_, NP, _, _} = NewNode = new_node(NewV),
+    {rotation_required(NP, PP), %% inform upper level whether to rotate
+     NewNode};
 
-insert({Value, Priority, nil, Right},
-       NewValue,
-       {ParentValue, ParentPriority, ParentLeft, ParentRight})
-  when NewValue < Value ->
-    {_, NewPriority, _, _} = New = new_node(NewValue),
-    case ParentPriority =< Priority of
-        true ->
-            {Value, Priority, New, Right};
-        false ->
-            todo_left_rotation
+insert({V, P, Left, Right}, PP, NewV) when NewV =< V ->
+    case insert(Left, P, NewV) of
+        {no_rotate, NewLeft} ->
+            {rotation_required(P, PP),
+             {V, P, NewLeft, Right}};
+        {rotate, {LV, LP, LL, LR}} ->
+            {rotation_required(P, PP),
+             {LV, LP, LL, {V, P, LR, Right}}} %% right rotation
     end;
+insert({V, P, Left, Right}, PP, NewV) when NewV > V ->
+    case insert(Right, P, NewV) of
+        {no_rotate, NewRight} ->
+            {rotation_required(P, PP), {V, P, Left, NewRight}};
+        {rotate, {RV, RP, RL, RR}} ->
+            {rotation_required(P, PP),
+             {RV, RP, {V, P, Left, RL}, RR}} %% left rotation
+    end.
 
-insert({Value, Priority, Left, nil}, NewValue, Parent)
-  when NewValue >= Value ->
-    {Value, Priority, Left, new_node(NewValue)};
-
-insert({Value, Priority, Left, Right} = Treap, NewValue, _Parent)
-  when NewValue < Value ->
-    {Value, Priority, insert(Left, NewValue, Treap), Right};
-
-insert({Value, Priority, Left, Right} = Treap, NewValue, _Parent)
-  when NewValue >= Value ->
-    {Value, Priority, Left, insert(Right, NewValue, Treap)}.
-    
-new_priority() ->                
-    random:uniform(?MAX_SIZE).
+rotation_required(NP, nil)               -> no_rotate; %% root has no parent
+rotation_required(NP, PP)  when NP >= PP -> no_rotate;
+rotation_required(_,_)                   -> rotate.
 
 new_node(Value) ->
     {Value, new_priority(), nil, nil}.
 
-%% T = treap:new().
-%%
-%%
-%%
-%%
-%% 
+new_priority() ->
+    random:uniform(?MAX_SIZE).
+
+test1() ->
+    T = treap:new(),
+    T2 = treap:insert(T, 7),
+    T3 = treap:insert(T2, 5),
+    T4 = treap:insert(T3, 4),
+    T5 = treap:insert(T4, 3),
+    T6 = treap:insert(T5, 2),
+    T6.
